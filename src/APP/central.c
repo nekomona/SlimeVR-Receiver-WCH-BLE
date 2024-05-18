@@ -30,19 +30,19 @@
  * CONSTANTS
  */
 // Maximum number of scan responses
-#define DEFAULT_MAX_SCAN_RES                10
+#define DEFAULT_MAX_SCAN_RES                16
 
 // Scan duration in 0.625ms
-#define DEFAULT_SCAN_DURATION               2400
+#define DEFAULT_SCAN_DURATION               6400
 
 // Connection min interval in 1.25ms
-#define DEFAULT_MIN_CONNECTION_INTERVAL     20
+#define DEFAULT_MIN_CONNECTION_INTERVAL     6
 
 // Connection max interval in 1.25ms
-#define DEFAULT_MAX_CONNECTION_INTERVAL     100
+#define DEFAULT_MAX_CONNECTION_INTERVAL     10
 
 // Connection supervision timeout in 10ms
-#define DEFAULT_CONNECTION_TIMEOUT          100
+#define DEFAULT_CONNECTION_TIMEOUT          600
 
 // Discovey mode (limited, general, all)
 #define DEFAULT_DISCOVERY_MODE              DEVDISC_MODE_ALL
@@ -60,13 +60,13 @@
 #define DEFAULT_LINK_WHITE_LIST             FALSE
 
 // Default read RSSI period in 0.625ms
-#define DEFAULT_RSSI_PERIOD                 2400
+#define DEFAULT_RSSI_PERIOD                 3200
 
 // Minimum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MIN_CONN_INTERVAL    20
+#define DEFAULT_UPDATE_MIN_CONN_INTERVAL    6
 
 // Maximum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    100
+#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    8
 
 // Slave latency to use parameter update
 #define DEFAULT_UPDATE_SLAVE_LATENCY        0
@@ -81,7 +81,7 @@
 #define DEFAULT_PAIRING_MODE                GAPBOND_PAIRING_MODE_WAIT_FOR_REQ
 
 // Default MITM mode (TRUE to require passcode or OOB when pairing)
-#define DEFAULT_MITM_MODE                   TRUE
+#define DEFAULT_MITM_MODE                   FALSE
 
 // Default bonding mode, TRUE to bond, max bonding 6 devices
 #define DEFAULT_BONDING_MODE                TRUE
@@ -155,9 +155,14 @@ static gapDevRec_t centralDevList[DEFAULT_MAX_SCAN_RES];
 
 // Peer device address
 static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
-    {0x02, 0x02, 0x03, 0xE4, 0xC2, 0x84},
-    {0x03, 0x02, 0x03, 0xE4, 0xC2, 0x84},
-    {0x04, 0x02, 0x03, 0xE4, 0xC2, 0x84}
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x83}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x8F}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x12}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x13}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x14}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x15}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x16}},
+    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x17}}
 };
 
 // Connection item list
@@ -181,7 +186,6 @@ static void centralPasscodeCB(uint8_t *deviceAddr, uint16_t connectionHandle,
 static void centralPairStateCB(uint16_t connHandle, uint8_t state, uint8_t status);
 static void central_ProcessTMOSMsg(tmos_event_hdr_t *pMsg);
 static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg);
-static void centralStartDiscovery(void);
 static void centralAddDeviceInfo(uint8_t *pAddr, uint8_t addrType);
 
 static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events);
