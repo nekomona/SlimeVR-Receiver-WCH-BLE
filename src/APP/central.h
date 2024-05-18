@@ -40,6 +40,24 @@ extern "C" {
 /*********************************************************************
  * MACROS
  */
+typedef struct
+{
+    uint8_t  taskID;     // Task ID for internal task/event processing
+    uint16_t connHandle; // Connection handle of current connection
+    uint8_t  state;      // Application state
+    uint8_t  peerAddr[B_ADDR_LEN];
+    uint8_t  discState;           // Discovery state
+    uint8_t  procedureInProgress; // GATT read/write procedure state
+    uint16_t svcStartHdl;         // Discovered service start handle
+    uint16_t svcEndHdl;           // Discovered service end handle
+    uint16_t charHdl;             // Discovered characteristic handle
+    uint16_t cccHdl;              // client characteristic configuration discovery handle
+} centralConnItem_t;
+
+typedef struct
+{
+    uint8_t peerAddr[B_ADDR_LEN];
+} peerAddrDefItem_t;
 
 /*********************************************************************
  * FUNCTIONS
