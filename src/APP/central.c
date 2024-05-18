@@ -81,7 +81,7 @@
 #define DEFAULT_PAIRING_MODE                GAPBOND_PAIRING_MODE_WAIT_FOR_REQ
 
 // Default MITM mode (TRUE to require passcode or OOB when pairing)
-#define DEFAULT_MITM_MODE                   FALSE
+#define DEFAULT_MITM_MODE                   TRUE
 
 // Default bonding mode, TRUE to bond, max bonding 6 devices
 #define DEFAULT_BONDING_MODE                TRUE
@@ -102,7 +102,7 @@
 #define DEFAULT_READ_OR_WRITE_DELAY         1600
 
 // Default write CCCD delay in 0.625ms
-#define DEFAULT_WRITE_CCCD_DELAY            1600
+#define DEFAULT_WRITE_CCCD_DELAY            3200
 
 // Establish link timeout in 0.625ms
 #define ESTABLISH_LINK_TIMEOUT              3200
@@ -492,7 +492,7 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
         {
             uint8_t status = pMsg->msg.errorRsp.errCode;
 
-            PRINT("Write Error: %x\n", status);
+            PRINT("Write Error: 0x%x 0x%x 0x%x\n", status, pMsg->msg.errorRsp.handle, pMsg->msg.errorRsp.reqOpcode);
         }
         else
         {
@@ -888,47 +888,17 @@ static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg)
             {
                 if(centralConnList[connItem].svcStartHdl != 0)
                 {
-                    // Discover characteristic
-                    centralConnList[connItem].discState = BLE_DISC_STATE_CHAR;
+                    // Discover CCCD handles
+                    centralConnList[connItem].discState = BLE_DISC_STATE_CCCD;
                     req.startHandle = centralConnList[connItem].svcStartHdl;
                     req.endHandle = centralConnList[connItem].svcEndHdl;
                     req.type.len = ATT_BT_UUID_SIZE;
-                    req.type.uuid[0] = LO_UINT16(REPORT_UUID);
-                    req.type.uuid[1] = HI_UINT16(REPORT_UUID);
+                    req.type.uuid[0] = LO_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
+                    req.type.uuid[1] = HI_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
 
-                    GATT_DiscCharsByUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
+                    GATT_ReadUsingCharUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
                 }
             }
-        }
-        else if(centralConnList[connItem].discState == BLE_DISC_STATE_CHAR)
-        {
-            // Characteristic found, store handle
-            if(pMsg->method == ATT_READ_BY_TYPE_RSP &&
-               pMsg->msg.readByTypeRsp.numPairs > 0)
-            {
-                centralConnList[connItem].charHdl = BUILD_UINT16(pMsg->msg.readByTypeRsp.pDataList[0],
-                                                                 pMsg->msg.readByTypeRsp.pDataList[1]);
-                centralConnList[connItem].procedureInProgress = FALSE;
-
-                // Display Characteristic 1 handle
-                PRINT("Found Characteristic 1 handle : %x \n", centralConnList[0].charHdl);
-            }
-
-            if((pMsg->method == ATT_READ_BY_TYPE_RSP &&
-                pMsg->hdr.status == bleProcedureComplete) ||
-                (pMsg->method == ATT_ERROR_RSP))
-            {
-                // Discover characteristic
-                centralConnList[connItem].discState = BLE_DISC_STATE_CCCD;
-                req.startHandle = centralConnList[connItem].svcStartHdl;
-                req.endHandle = centralConnList[connItem].svcEndHdl;
-                req.type.len = ATT_BT_UUID_SIZE;
-                req.type.uuid[0] = LO_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
-                req.type.uuid[1] = HI_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
-
-                GATT_ReadUsingCharUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
-            }
-
         }
         else if(centralConnList[connItem].discState == BLE_DISC_STATE_CCCD)
         {
