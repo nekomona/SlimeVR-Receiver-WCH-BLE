@@ -168,12 +168,6 @@ static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
 // Connection item list
 static centralConnItem_t centralConnList[CENTRAL_MAX_CONNECTION];
 
-// Value to write
-static uint8_t centralCharVal = 0x5A;
-
-// Value read/write toggle
-static uint8_t centralDoWrite = TRUE;
-
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -365,54 +359,9 @@ static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events)
         return (events ^ START_PHY_UPDATE_EVT);
     }
 
-    if(events & START_READ_OR_WRITE_EVT)
-    {
-        if(centralConnList[0].procedureInProgress == FALSE)
-        {
-            if(centralDoWrite)
-            {
-                // Do a write
-                attWriteReq_t req;
-
-                req.cmd = FALSE;
-                req.sig = FALSE;
-                req.handle = centralConnList[0].charHdl;
-                req.len = 1;
-                req.pValue = GATT_bm_alloc(centralConnList[0].connHandle, ATT_WRITE_REQ, req.len, NULL, 0);
-                if(req.pValue != NULL)
-                {
-                    *req.pValue = centralCharVal;
-
-                    if(GATT_WriteCharValue(centralConnList[0].connHandle, &req, centralTaskId) == SUCCESS)
-                    {
-                        centralConnList[0].procedureInProgress = TRUE;
-                        centralDoWrite = !centralDoWrite;
-                        tmos_start_task(centralConnList[0].taskID, START_READ_OR_WRITE_EVT, DEFAULT_READ_OR_WRITE_DELAY);
-                    }
-                    else
-                    {
-                        GATT_bm_free((gattMsg_t *)&req, ATT_WRITE_REQ);
-                    }
-                }
-            }
-            else
-            {
-                // Do a read
-                attReadReq_t req;
-
-                req.handle = centralConnList[0].charHdl;
-                if(GATT_ReadCharValue(centralConnList[0].connHandle, &req, centralTaskId) == SUCCESS)
-                {
-                    centralConnList[0].procedureInProgress = TRUE;
-                    centralDoWrite = !centralDoWrite;
-                }
-            }
-        }
-        return (events ^ START_READ_OR_WRITE_EVT);
-    }
-
     if(events & START_WRITE_CCCD_EVT)
     {
+        // Write CCCD as 0x01, 0x00 to enable notify
         if(centralConnList[0].procedureInProgress == FALSE)
         {
             // Do a write
@@ -939,8 +888,8 @@ static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg)
                     req.startHandle = centralConnList[connItem].svcStartHdl;
                     req.endHandle = centralConnList[connItem].svcEndHdl;
                     req.type.len = ATT_BT_UUID_SIZE;
-                    req.type.uuid[0] = LO_UINT16(SIMPLEPROFILE_CHAR1_UUID);
-                    req.type.uuid[1] = HI_UINT16(SIMPLEPROFILE_CHAR1_UUID);
+                    req.type.uuid[0] = LO_UINT16(REPORT_UUID);
+                    req.type.uuid[1] = HI_UINT16(REPORT_UUID);
 
                     GATT_ReadUsingCharUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
                 }
@@ -955,9 +904,6 @@ static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg)
                 centralConnList[connItem].charHdl = BUILD_UINT16(pMsg->msg.readByTypeRsp.pDataList[0],
                                                                  pMsg->msg.readByTypeRsp.pDataList[1]);
                 centralConnList[connItem].procedureInProgress = FALSE;
-
-                // Start do read or write
-                tmos_start_task(centralConnList[connItem].taskID, START_READ_OR_WRITE_EVT, DEFAULT_READ_OR_WRITE_DELAY);
 
                 // Display Characteristic 1 handle
                 PRINT("Found Characteristic 1 handle : %x \n", centralConnList[0].charHdl);
