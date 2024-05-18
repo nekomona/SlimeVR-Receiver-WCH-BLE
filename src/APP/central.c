@@ -163,42 +163,12 @@ static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
 // Connection item list
 static centralConnItem_t centralConnList[CENTRAL_MAX_CONNECTION];
 
-// RSSI polling state
-static uint8_t centralRssi = TRUE;
-
-// Parameter update state
-static uint8_t centralParamUpdate = TRUE;
-
-// Phy update state
-static uint8 centralPhyUpdate = FALSE;
-
-// Connection handle of current connection
-static uint16_t centralConnHandle = GAP_CONNHANDLE_INIT;
-
-// Application state
-static uint8_t centralState = BLE_STATE_IDLE;
-
-// Discovery state
-static uint8_t centralDiscState = BLE_DISC_STATE_IDLE;
-
-// Discovered service start and end handle
-static uint16_t centralSvcStartHdl = 0;
-static uint16_t centralSvcEndHdl = 0;
-
-// Discovered characteristic handle
-static uint16_t centralCharHdl = 0;
-
-// Discovered Client Characteristic Configuration handle
-static uint16_t centralCCCDHdl = 0;
-
 // Value to write
 static uint8_t centralCharVal = 0x5A;
 
 // Value read/write toggle
 static uint8_t centralDoWrite = TRUE;
 
-// GATT read/write procedure state
-static uint8_t centralProcedureInProgress = FALSE;
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -583,7 +553,7 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
     {
         PRINT("Receive noti: %x\n", *pMsg->msg.handleValueNoti.pValue);
     }
-    else if(centralDiscState != BLE_DISC_STATE_IDLE)
+    else if(centralConnList[connItem].discState != BLE_DISC_STATE_IDLE)
     {
         centralGATTDiscoveryEvent(connItem, pMsg);
     }
@@ -618,7 +588,6 @@ static void centralRssiCB(uint16_t connHandle, int8_t rssi)
 static void centralHciMTUChangeCB(uint16_t connHandle, uint16_t maxTxOctets, uint16_t maxRxOctets)
 {
     PRINT(" HCI data length changed, Tx: %d, Rx: %d, conn %x\n", maxTxOctets, maxRxOctets, connHandle);
-    // centralProcedureInProgress = TRUE;
 }
 
 static uint8_t centralAddrCmp(peerAddrDefItem_t *PeerAddrDef, uint8_t *addr)
@@ -740,22 +709,8 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                     if (connItem == 0) {
                         // Initiate service discovery
                         tmos_start_task(centralTaskId, START_SVC_DISCOVERY_EVT, DEFAULT_SVC_DISCOVERY_DELAY);
-
-                        // See if initiate connect parameter update
-                        if(centralParamUpdate)
-                        {
-                            tmos_start_task(centralTaskId, START_PARAM_UPDATE_EVT, DEFAULT_PARAM_UPDATE_DELAY);
-                        }
-                        // See if initiate phy update
-                        if(centralPhyUpdate)
-                        {
-                            tmos_start_task(centralTaskId, START_PHY_UPDATE_EVT, DEFAULT_PHY_UPDATE_DELAY);
-                        }
-                        // See if start RSSI polling
-                        if(centralRssi)
-                        {
-                            tmos_start_task(centralTaskId, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
-                        }
+                        tmos_start_task(centralTaskId, START_PARAM_UPDATE_EVT, DEFAULT_PARAM_UPDATE_DELAY);
+                        tmos_start_task(centralTaskId, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
                     }
 
                     PRINT("Connected...\n");
@@ -956,7 +911,7 @@ static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg)
     attReadByTypeReq_t req;
 
     if(connItem == 0) {
-        if(centralDiscState == BLE_DISC_STATE_SVC)
+        if(centralConnList[connItem].discState == BLE_DISC_STATE_SVC)
         {
             // Service found, store handles
             if(pMsg->method == ATT_FIND_BY_TYPE_VALUE_RSP &&
