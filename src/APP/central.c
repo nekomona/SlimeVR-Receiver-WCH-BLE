@@ -30,7 +30,7 @@
  * CONSTANTS
  */
 // Maximum number of scan responses
-#define DEFAULT_MAX_SCAN_RES                16
+#define DEFAULT_MAX_SCAN_RES                32
 
 // Scan duration in 0.625ms
 #define DEFAULT_SCAN_DURATION               6400
@@ -155,14 +155,14 @@ static gapDevRec_t centralDevList[DEFAULT_MAX_SCAN_RES];
 
 // Peer device address
 static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x83}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x8F}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x12}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x13}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x14}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x15}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x16}},
-    {{0xD4, 0xA4, 0x17, 0x10, 0x38, 0x17}}
+    {{0x83, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x8F, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x12, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x13, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x14, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x15, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x16, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x17, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
 };
 
 // Connection item list
@@ -504,7 +504,12 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
     }
     else if(pMsg->method == ATT_HANDLE_VALUE_NOTI)
     {
-        PRINT("Receive noti: %x\n", *pMsg->msg.handleValueNoti.pValue);
+        int len = pMsg->msg.handleValueNoti.len;
+        PRINT("Receive noti: %x - %d|", pMsg->msg.handleValueNoti.handle, len);
+        for (int i = 0; i < len; i++) {
+            PRINT("%x ", pMsg->msg.handleValueNoti.pValue[i]);
+        }
+        PRINT("\n");
     }
     else if(centralConnList[connItem].discState != BLE_DISC_STATE_IDLE)
     {
@@ -661,9 +666,9 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                     
                     if (connItem == 0) {
                         // Initiate service discovery
-                        tmos_start_task(centralTaskId, START_SVC_DISCOVERY_EVT, DEFAULT_SVC_DISCOVERY_DELAY);
-                        tmos_start_task(centralTaskId, START_PARAM_UPDATE_EVT, DEFAULT_PARAM_UPDATE_DELAY);
-                        tmos_start_task(centralTaskId, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
+                        tmos_start_task(centralConnList[0].taskID, START_SVC_DISCOVERY_EVT, DEFAULT_SVC_DISCOVERY_DELAY);
+                        tmos_start_task(centralConnList[0].taskID, START_PARAM_UPDATE_EVT, DEFAULT_PARAM_UPDATE_DELAY);
+                        tmos_start_task(centralConnList[0].taskID, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
                     }
 
                     PRINT("Connected...\n");
@@ -674,7 +679,7 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                         if(centralConnList[connItem].connHandle == GAP_CONNHANDLE_INIT)
                             break;
                     }
-                    if(connItem < CENTRAL_MAX_CONNECTION)
+                    if(connItem < 2)
                     {
                         PRINT("Discovering...\n");
                         centralScanRes = 0;
@@ -837,8 +842,8 @@ static void centralPasscodeCB(uint8_t *deviceAddr, uint16_t connectionHandle,
  */
 static void centralConnIistStartDiscovery_0(void)
 {
-    uint8_t uuid[ATT_BT_UUID_SIZE] = {LO_UINT16(SIMPLEPROFILE_SERV_UUID),
-                                      HI_UINT16(SIMPLEPROFILE_SERV_UUID)};
+    uint8_t uuid[ATT_BT_UUID_SIZE] = {LO_UINT16(HID_SERV_UUID),
+                                      HI_UINT16(HID_SERV_UUID)};
 
     // Initialize cached handles
     centralConnList[0].svcStartHdl = centralConnList[0].svcEndHdl = centralConnList[0].charHdl = 0;
@@ -891,7 +896,7 @@ static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg)
                     req.type.uuid[0] = LO_UINT16(REPORT_UUID);
                     req.type.uuid[1] = HI_UINT16(REPORT_UUID);
 
-                    GATT_ReadUsingCharUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
+                    GATT_DiscCharsByUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
                 }
             }
         }
@@ -981,7 +986,7 @@ static void centralAddDeviceInfo(uint8_t *pAddr, uint8_t addrType)
         // Increment scan result count
         centralScanRes++;
         // Display device addr
-        PRINT("Device %d - Addr %x %x %x %x %x %x \n", centralScanRes,
+        PRINT("Device %d - Addr %02x %02x %02x %02x %02x %02x \n", centralScanRes,
               centralDevList[centralScanRes - 1].addr[0],
               centralDevList[centralScanRes - 1].addr[1],
               centralDevList[centralScanRes - 1].addr[2],
