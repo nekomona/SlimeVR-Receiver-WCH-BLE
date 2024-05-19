@@ -78,7 +78,7 @@
 #define DEFAULT_PASSCODE                    0
 
 // Default GAP pairing mode
-#define DEFAULT_PAIRING_MODE                GAPBOND_PAIRING_MODE_WAIT_FOR_REQ
+#define DEFAULT_PAIRING_MODE                GAPBOND_PAIRING_MODE_INITIATE
 
 // Default MITM mode (TRUE to require passcode or OOB when pairing)
 #define DEFAULT_MITM_MODE                   TRUE
