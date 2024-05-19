@@ -14,9 +14,10 @@ struct HidSensorReport {
 	uint16_t a[3]; // x, y, z
 };
 
-struct HidSensorReport reports[32+4];
+#define SLIME_REPORT_BUFF 32
+
+struct HidSensorReport reports[SLIME_REPORT_BUFF];
 int report_count = 0;
-int report_sent = 0;
 
 extern void hid_start_write(const void * src, int len);
 extern bool hid_is_busy();
@@ -27,35 +28,45 @@ void send_report() {
     if (!hid_is_busy()) {
         // Pad report to 3x20B if <3 reports to send
         for (int i = report_count; i < 3; i++) {
-            reports[report_sent + i] = reports[report_sent];
+            reports[i] = reports[0];
         }
 
-        hid_start_write(&reports[report_sent], 3 * sizeof(struct HidSensorReport));
+        hid_start_write(reports, 3 * sizeof(struct HidSensorReport));
 
         if (report_count > 3) {
             PRINT("left %d rpt\n", report_count-3);
         }
 
-        report_sent += 3;
-        if (report_sent > 32) report_sent = 0;
         report_count = 0;
     }
 }
 
 void push_report(uint8_t sensorid, uint8_t rssi, const void * reportdata) {
-    if (report_sent + report_count < 32) {
-        struct HidSensorReport * rpt = &reports[report_sent+report_count];
+    uint8_t combined_sensorid = sensorid << 4 | (((uint8_t*)reportdata)[0] & 0x0F);
 
+    for (int i = 0; i < report_count; i++) {
+        // Duplicated result, overwrite data in buffer
+        if ( reports[+i].sensorId == combined_sensorid ) {
+            tmos_memcpy( ((void*)&reports[+i])+3, reportdata+2, sizeof(struct HidSensorReport)-3);
+            return;
+        }
+    }
+
+    if ( report_count < SLIME_REPORT_BUFF) {
+        struct HidSensorReport * rpt = &reports[+report_count];
+        
         rpt->__type = 0;
-
-        tmos_memcpy(rpt+1, reportdata, sizeof(struct HidSensorReport)-1);
-        rpt->sensorId = (sensorid << 4) | (rpt->sensorId & 0x0F);
+        rpt->sensorId = combined_sensorid;
         rpt->rssi = rssi;
 
+        tmos_memcpy(((void *)rpt)+3, reportdata+2, sizeof(struct HidSensorReport)-3);
+
         report_count++;
+        if (report_count == 3) {
+            send_report();
+        }
     } else {
         PRINT("OVF\n");
-        report_count = 0;
     }
 }
 
