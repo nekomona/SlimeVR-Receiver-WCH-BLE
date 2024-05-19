@@ -8,9 +8,9 @@
 #define CDC_INT_EP 0x83
 
 /*!< hidraw in endpoint */
-#define HIDRAW_IN_EP       0x86
-#define HIDRAW_IN_SIZE     64
-#define HIDRAW_IN_INTERVAL 10
+#define HIDRAW_IN_EP       0x84
+#define HIDRAW_IN_SIZE     63
+#define HIDRAW_IN_INTERVAL 0
 
 /*!< custom hid report descriptor size */
 #define HID_CUSTOM_REPORT_DESC_SIZE 16
@@ -156,7 +156,6 @@ static volatile uint8_t custom_state = HID_STATE_IDLE;
 
 static void usbd_hid_custom_in_callback(uint8_t ep, uint32_t nbytes)
 {
-    USB_LOG_RAW("actual in len:%d\r\n", nbytes);
     custom_state = HID_STATE_IDLE;
 }
 
