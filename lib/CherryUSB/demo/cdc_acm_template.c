@@ -10,7 +10,7 @@
 /*!< hidraw in endpoint */
 #define HIDRAW_IN_EP       0x86
 #define HIDRAW_IN_SIZE     64
-#define HIDRAW_IN_INTERVAL 0
+#define HIDRAW_IN_INTERVAL 10
 
 /*!< custom hid report descriptor size */
 #define HID_CUSTOM_REPORT_DESC_SIZE 16
@@ -32,15 +32,15 @@
 /*!< global descriptor */
 static const uint8_t cdc_descriptor[] = {
     USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0xEF, 0x02, 0x01, USBD_VID, USBD_PID, 0x0100, 0x01),
-    USB_CONFIG_DESCRIPTOR_INIT(USB_CONFIG_SIZE, 0x02, 0x01, USB_CONFIG_BUS_POWERED, USBD_MAX_POWER),
+    USB_CONFIG_DESCRIPTOR_INIT(USB_CONFIG_SIZE, 0x03, 0x01, USB_CONFIG_BUS_POWERED, USBD_MAX_POWER),
     CDC_ACM_DESCRIPTOR_INIT(0x00, CDC_INT_EP, CDC_OUT_EP, CDC_IN_EP, CDC_MAX_MPS, 0x02),
     /************** Descriptor of Custom interface *****************/
     0x09,                          /* bLength: Interface Descriptor size */
     USB_DESCRIPTOR_TYPE_INTERFACE, /* bDescriptorType: Interface descriptor type */
-    0x00,                          /* bInterfaceNumber: Number of Interface */
+    0x02,                          /* bInterfaceNumber: Number of Interface */
     0x00,                          /* bAlternateSetting: Alternate setting */
-    0x02,                          /* bNumEndpoints */
-    0x03,                          /* bInterfaceClass: HID */
+    0x01,                          /* bNumEndpoints */
+    USB_DEVICE_CLASS_HID,          /* bInterfaceClass: HID */
     0x01,                          /* bInterfaceSubClass : 1=BOOT, 0=no boot */
     0x00,                          /* nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse */
     0,                             /* iInterface: Index of string descriptor */
@@ -148,9 +148,6 @@ static const uint8_t hid_custom_report_desc[HID_CUSTOM_REPORT_DESC_SIZE] = {
 	0xc0 // END_COLLECTION
 };
 
-USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t read_buffer[64];
-USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t write_buffer[64];
-
 #define HID_STATE_IDLE 0
 #define HID_STATE_BUSY 1
 
@@ -168,18 +165,16 @@ static struct usbd_endpoint custom_in_ep = {
     .ep_addr = HIDRAW_IN_EP
 };
 
-void hid_custom_test(void)
-{
-    const uint8_t sendbuffer[8] = { 0x00, 0x00, HID_KBD_USAGE_A, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
-    memcpy(write_buffer, sendbuffer, 8);
-    int ret = usbd_ep_start_write(HIDRAW_IN_EP, write_buffer, 8);
+void hid_start_write(const void * src, int len) {
+    int ret = usbd_ep_start_write(HIDRAW_IN_EP, src, len);
     if (ret < 0) {
         return;
     }
     custom_state = HID_STATE_BUSY;
-    while (custom_state == HID_STATE_BUSY) {
-    }
+}
+
+bool hid_is_busy() {
+    return custom_state == HID_STATE_BUSY;
 }
 
 USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t read_buffer[2048];

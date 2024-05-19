@@ -18,6 +18,7 @@
 #include "CONFIG.h"
 #include "gattprofile.h"
 #include "central.h"
+#include "slime_hid_report.h"
 
 /*********************************************************************
  * MACROS
@@ -167,6 +168,7 @@ static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
 
 // Connection item list
 static centralConnItem_t centralConnList[CENTRAL_MAX_CONNECTION];
+static uint8_t connRssiList[CENTRAL_MAX_CONNECTION];
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -313,6 +315,11 @@ uint16_t Central_ProcessEvent(uint8_t task_id, uint16_t events)
     {
         GAPRole_TerminateLink(INVALID_CONNHANDLE);
         return (events ^ ESTABLISH_LINK_TIMEOUT_EVT);
+    }
+
+    if(events & SEND_HID_REPORT_EVT) {
+        // send_report();
+        return (events ^ SEND_HID_REPORT_EVT);
     }
 
     uint8_t connItem;
@@ -503,6 +510,10 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
     else if(pMsg->method == ATT_HANDLE_VALUE_NOTI)
     {
         int len = pMsg->msg.handleValueNoti.len;
+        if (len == 19) {
+            push_report(connItem, connRssiList[connItem], pMsg->msg.handleValueNoti.pValue);
+            tmos_set_event(centralTaskId, SEND_HID_REPORT_EVT);
+        }
         /*
         PRINT("Receive noti: %x - %d|", connItem, len);
         for (int i = 0; i < len; i++) {
@@ -530,7 +541,22 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
  */
 static void centralRssiCB(uint16_t connHandle, int8_t rssi)
 {
-    PRINT("RSSI : -%d dB Conn - %x \n", -rssi, connHandle);
+    uint8_t connItem;
+    for(connItem = 0; connItem < CENTRAL_MAX_CONNECTION; connItem++)
+    {
+        if(centralConnList[connItem].connHandle == connHandle) {
+            connRssiList[connItem] = rssi;
+            PRINT("Dev %d RSSI : -%d dB\n", connItem, -rssi);
+            break;
+        }
+    }
+    if(connItem == CENTRAL_MAX_CONNECTION)
+    {
+        return;
+        // Should not go there
+    }
+
+
 }
 
 /*********************************************************************
