@@ -42,19 +42,19 @@ void send_report() {
 }
 
 void push_report(uint8_t sensorid, uint8_t rssi, const void * reportdata) {
-    uint8_t combined_sensorid = sensorid << 4 | (((uint8_t*)reportdata)[0] & 0x0F);
+    uint8_t combined_sensorid = (sensorid << 4) | (((uint8_t*)reportdata)[0] & 0x0F);
 
     for (int i = 0; i < report_count; i++) {
         // Duplicated result, overwrite data in buffer
-        if ( reports[+i].sensorId == combined_sensorid ) {
-            tmos_memcpy( ((void*)&reports[+i])+3, reportdata+2, sizeof(struct HidSensorReport)-3);
+        if ( reports[i].sensorId == combined_sensorid ) {
+            tmos_memcpy( ((void*)&reports[i])+3, reportdata+2, sizeof(struct HidSensorReport)-3);
             return;
         }
     }
 
     if ( report_count < SLIME_REPORT_BUFF) {
         struct HidSensorReport * rpt = &reports[+report_count];
-        
+
         rpt->__type = 0;
         rpt->sensorId = combined_sensorid;
         rpt->rssi = rssi;
