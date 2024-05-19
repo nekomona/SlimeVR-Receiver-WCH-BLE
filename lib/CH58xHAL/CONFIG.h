@@ -76,6 +76,7 @@
 #define TEM_SAMPLE FALSE
 #define PERIPHERAL_MAX_CONNECTION 0
 #define CENTRAL_MAX_CONNECTION 8
+#define BLE_MEMHEAP_SIZE                    (1024*12)
 // #define SLEEP_RTC_MIN_TIME US_TO_RTC(1500)
 /*********************************************************************
  * Ĭ������ֵ

@@ -36,10 +36,10 @@
 #define DEFAULT_SCAN_DURATION               6400
 
 // Connection min interval in 1.25ms
-#define DEFAULT_MIN_CONNECTION_INTERVAL     6
+#define DEFAULT_MIN_CONNECTION_INTERVAL     20
 
 // Connection max interval in 1.25ms
-#define DEFAULT_MAX_CONNECTION_INTERVAL     10
+#define DEFAULT_MAX_CONNECTION_INTERVAL     20
 
 // Connection supervision timeout in 10ms
 #define DEFAULT_CONNECTION_TIMEOUT          600
@@ -66,7 +66,7 @@
 #define DEFAULT_UPDATE_MIN_CONN_INTERVAL    6
 
 // Maximum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    8
+#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    16
 
 // Slave latency to use parameter update
 #define DEFAULT_UPDATE_SLAVE_LATENCY        0
@@ -157,9 +157,9 @@ static gapDevRec_t centralDevList[DEFAULT_MAX_SCAN_RES];
 static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
     {{0x83, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
     {{0x8F, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x12, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x13, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x14, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x64, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x73, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
+    {{0x4F, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
     {{0x15, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
     {{0x16, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
     {{0x17, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
@@ -182,9 +182,9 @@ static void central_ProcessTMOSMsg(tmos_event_hdr_t *pMsg);
 static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg);
 static void centralAddDeviceInfo(uint8_t *pAddr, uint8_t addrType);
 
-static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events);
-static void     centralConnIistStartDiscovery_0(void);
-static void     centralInitConnItem(uint8_t task_id, centralConnItem_t *centralConnList);
+static uint16_t connect0_ProcessEvent(uint8_t connItem, uint16_t events);
+static void     centralConnIistStartDiscovery_0(uint8_t connItem);
+static void     centralInitConnItem(centralConnItem_t *centralConnList);
 static uint8_t  centralAddrCmp(peerAddrDefItem_t *PeerAddrDef, uint8_t *addr);
 /*********************************************************************
  * PROFILE CALLBACKS
@@ -247,7 +247,7 @@ void Central_Init()
     }
 
     // Init Connection Item
-    centralInitConnItem(centralTaskId, centralConnList);
+    centralInitConnItem(centralConnList);
     // Initialize GATT Client
     GATT_InitClient();
     // Register to receive incoming ATT Indications/Notifications
@@ -256,7 +256,7 @@ void Central_Init()
     tmos_set_event(centralTaskId, START_DEVICE_EVT);
 }
 
-static void centralInitConnItem(uint8_t task_id, centralConnItem_t *centralConnList)
+static void centralInitConnItem(centralConnItem_t *centralConnList)
 {
     uint8_t connItem;
     for(connItem = 0; connItem < CENTRAL_MAX_CONNECTION; connItem++)
@@ -314,35 +314,33 @@ uint16_t Central_ProcessEvent(uint8_t task_id, uint16_t events)
         GAPRole_TerminateLink(INVALID_CONNHANDLE);
         return (events ^ ESTABLISH_LINK_TIMEOUT_EVT);
     }
-    
-    if(task_id == centralConnList[0].taskID)
+
+    uint8_t connItem;
+    for(connItem = 0; connItem < CENTRAL_MAX_CONNECTION; connItem++)
     {
-        return connect0_ProcessEvent(task_id, events);
-    }
-    else if(task_id == centralConnList[1].taskID)
-    {
-    }
-    else if(task_id == centralConnList[2].taskID)
-    {
+        if (task_id == centralConnList[connItem].taskID)
+        {
+            return connect0_ProcessEvent(connItem, events);
+        }
     }
 
     // Discard unknown events
     return 0;
 }
 
-static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events)
+static uint16_t connect0_ProcessEvent(uint8_t connItem, uint16_t events)
 {
     if(events & START_SVC_DISCOVERY_EVT)
     {
         // start service discovery
-        centralConnIistStartDiscovery_0();
+        centralConnIistStartDiscovery_0(connItem);
         return (events ^ START_SVC_DISCOVERY_EVT);
     }
 
     if(events & START_PARAM_UPDATE_EVT)
     {
         // start connect parameter update
-        GAPRole_UpdateLink(centralConnList[0].connHandle,
+        GAPRole_UpdateLink(centralConnList[connItem].connHandle,
                            DEFAULT_UPDATE_MIN_CONN_INTERVAL,
                            DEFAULT_UPDATE_MAX_CONN_INTERVAL,
                            DEFAULT_UPDATE_SLAVE_LATENCY,
@@ -353,7 +351,7 @@ static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events)
     if(events & START_PHY_UPDATE_EVT)
     {
         // start phy update
-        PRINT("PHY Update %x...\n", GAPRole_UpdatePHY(centralConnList[0].connHandle, 0, 
+        PRINT("PHY Update %x...\n", GAPRole_UpdatePHY(centralConnList[connItem].connHandle, 0, 
                     GAP_PHY_BIT_LE_2M, GAP_PHY_BIT_LE_2M, GAP_PHY_OPTIONS_NOPRE));
 
         return (events ^ START_PHY_UPDATE_EVT);
@@ -362,24 +360,24 @@ static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events)
     if(events & START_WRITE_CCCD_EVT)
     {
         // Write CCCD as 0x01, 0x00 to enable notify
-        if(centralConnList[0].procedureInProgress == FALSE)
+        if(centralConnList[connItem].procedureInProgress == FALSE)
         {
             // Do a write
             attWriteReq_t req;
 
             req.cmd = FALSE;
             req.sig = FALSE;
-            req.handle = centralConnList[0].cccHdl;
+            req.handle = centralConnList[connItem].cccHdl;
             req.len = 2;
-            req.pValue = GATT_bm_alloc(centralConnList[0].connHandle, ATT_WRITE_REQ, req.len, NULL, 0);
+            req.pValue = GATT_bm_alloc(centralConnList[connItem].connHandle, ATT_WRITE_REQ, req.len, NULL, 0);
             if(req.pValue != NULL)
             {
                 req.pValue[0] = 1;
                 req.pValue[1] = 0;
 
-                if(GATT_WriteCharValue(centralConnList[0].connHandle, &req, centralTaskId) == SUCCESS)
+                if(GATT_WriteCharValue(centralConnList[connItem].connHandle, &req, centralTaskId) == SUCCESS)
                 {
-                    centralConnList[0].procedureInProgress = TRUE;
+                    centralConnList[connItem].procedureInProgress = TRUE;
                 }
                 else
                 {
@@ -392,8 +390,8 @@ static uint16_t connect0_ProcessEvent(uint8_t task_id, uint16_t events)
 
     if(events & START_READ_RSSI_EVT)
     {
-        GAPRole_ReadRssiCmd(centralConnList[0].connHandle);
-        tmos_start_task(centralConnList[0].taskID, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
+        GAPRole_ReadRssiCmd(centralConnList[connItem].connHandle);
+        tmos_start_task(centralConnList[connItem].taskID, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
         return (events ^ START_READ_RSSI_EVT);
     }
 
@@ -505,11 +503,13 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
     else if(pMsg->method == ATT_HANDLE_VALUE_NOTI)
     {
         int len = pMsg->msg.handleValueNoti.len;
-        PRINT("Receive noti: %x - %d|", pMsg->msg.handleValueNoti.handle, len);
+        /*
+        PRINT("Receive noti: %x - %d|", connItem, len);
         for (int i = 0; i < len; i++) {
             PRINT("%x ", pMsg->msg.handleValueNoti.pValue[i]);
         }
         PRINT("\n");
+        */
     }
     else if(centralConnList[connItem].discState != BLE_DISC_STATE_IDLE)
     {
@@ -664,12 +664,10 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
 
                     GATT_ExchangeMTU(centralConnList[connItem].connHandle, &req, centralTaskId);
                     
-                    if (connItem == 0) {
-                        // Initiate service discovery
-                        tmos_start_task(centralConnList[0].taskID, START_SVC_DISCOVERY_EVT, DEFAULT_SVC_DISCOVERY_DELAY);
-                        tmos_start_task(centralConnList[0].taskID, START_PARAM_UPDATE_EVT, DEFAULT_PARAM_UPDATE_DELAY);
-                        tmos_start_task(centralConnList[0].taskID, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
-                    }
+                    // Initiate service discovery
+                    tmos_start_task(centralConnList[connItem].taskID, START_SVC_DISCOVERY_EVT, DEFAULT_SVC_DISCOVERY_DELAY);
+                    tmos_start_task(centralConnList[connItem].taskID, START_PARAM_UPDATE_EVT, DEFAULT_PARAM_UPDATE_DELAY);
+                    tmos_start_task(centralConnList[connItem].taskID, START_READ_RSSI_EVT, DEFAULT_RSSI_PERIOD);
 
                     PRINT("Connected...\n");
 
@@ -679,7 +677,7 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                         if(centralConnList[connItem].connHandle == GAP_CONNHANDLE_INIT)
                             break;
                     }
-                    if(connItem < 2)
+                    if(connItem < 5)
                     {
                         PRINT("Discovering...\n");
                         centralScanRes = 0;
@@ -840,18 +838,18 @@ static void centralPasscodeCB(uint8_t *deviceAddr, uint16_t connectionHandle,
  *
  * @return  none
  */
-static void centralConnIistStartDiscovery_0(void)
+static void centralConnIistStartDiscovery_0(uint8_t connItem)
 {
     uint8_t uuid[ATT_BT_UUID_SIZE] = {LO_UINT16(HID_SERV_UUID),
                                       HI_UINT16(HID_SERV_UUID)};
 
     // Initialize cached handles
-    centralConnList[0].svcStartHdl = centralConnList[0].svcEndHdl = centralConnList[0].charHdl = 0;
+    centralConnList[connItem].svcStartHdl = centralConnList[connItem].svcEndHdl = centralConnList[connItem].charHdl = 0;
 
-    centralConnList[0].discState = BLE_DISC_STATE_SVC;
+    centralConnList[connItem].discState = BLE_DISC_STATE_SVC;
 
     // Discovery simple BLE service
-    GATT_DiscPrimaryServiceByUUID(centralConnList[0].connHandle,
+    GATT_DiscPrimaryServiceByUUID(centralConnList[connItem].connHandle,
                                   uuid,
                                   ATT_BT_UUID_SIZE,
                                   centralTaskId);
@@ -868,63 +866,55 @@ static void centralGATTDiscoveryEvent(uint8_t connItem, gattMsgEvent_t *pMsg)
 {
     attReadByTypeReq_t req;
 
-    if(connItem == 0) {
-        if(centralConnList[connItem].discState == BLE_DISC_STATE_SVC)
+    if(centralConnList[connItem].discState == BLE_DISC_STATE_SVC)
+    {
+        // Service found, store handles
+        if(pMsg->method == ATT_FIND_BY_TYPE_VALUE_RSP &&
+            pMsg->msg.findByTypeValueRsp.numInfo > 0)
         {
-            // Service found, store handles
-            if(pMsg->method == ATT_FIND_BY_TYPE_VALUE_RSP &&
-               pMsg->msg.findByTypeValueRsp.numInfo > 0)
-            {
-                centralConnList[connItem].svcStartHdl = ATT_ATTR_HANDLE(pMsg->msg.findByTypeValueRsp.pHandlesInfo, 0);
-                centralConnList[connItem].svcEndHdl = ATT_GRP_END_HANDLE(pMsg->msg.findByTypeValueRsp.pHandlesInfo, 0);
+            centralConnList[connItem].svcStartHdl = ATT_ATTR_HANDLE(pMsg->msg.findByTypeValueRsp.pHandlesInfo, 0);
+            centralConnList[connItem].svcEndHdl = ATT_GRP_END_HANDLE(pMsg->msg.findByTypeValueRsp.pHandlesInfo, 0);
 
-                // Display Profile Service handle range
-                PRINT("Found Profile Service handle : %x ~ %x \n", centralConnList[connItem].svcStartHdl, centralConnList[connItem].svcEndHdl);
-            }
-            // If procedure complete
-            if((pMsg->method == ATT_FIND_BY_TYPE_VALUE_RSP &&
-                pMsg->hdr.status == bleProcedureComplete) ||
-               (pMsg->method == ATT_ERROR_RSP))
+            // Display Profile Service handle range
+            PRINT("Found Profile Service handle : %x ~ %x \n", centralConnList[connItem].svcStartHdl, centralConnList[connItem].svcEndHdl);
+        }
+        // If procedure complete
+        if((pMsg->method == ATT_FIND_BY_TYPE_VALUE_RSP &&
+            pMsg->hdr.status == bleProcedureComplete) ||
+            (pMsg->method == ATT_ERROR_RSP))
+        {
+            if(centralConnList[connItem].svcStartHdl != 0)
             {
-                if(centralConnList[connItem].svcStartHdl != 0)
-                {
-                    // Discover CCCD handles
-                    centralConnList[connItem].discState = BLE_DISC_STATE_CCCD;
-                    req.startHandle = centralConnList[connItem].svcStartHdl;
-                    req.endHandle = centralConnList[connItem].svcEndHdl;
-                    req.type.len = ATT_BT_UUID_SIZE;
-                    req.type.uuid[0] = LO_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
-                    req.type.uuid[1] = HI_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
+                // Discover CCCD handles
+                centralConnList[connItem].discState = BLE_DISC_STATE_CCCD;
+                req.startHandle = centralConnList[connItem].svcStartHdl;
+                req.endHandle = centralConnList[connItem].svcEndHdl;
+                req.type.len = ATT_BT_UUID_SIZE;
+                req.type.uuid[0] = LO_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
+                req.type.uuid[1] = HI_UINT16(GATT_CLIENT_CHAR_CFG_UUID);
 
-                    GATT_ReadUsingCharUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
-                }
+                GATT_ReadUsingCharUUID(centralConnList[connItem].connHandle, &req, centralTaskId);
             }
         }
-        else if(centralConnList[connItem].discState == BLE_DISC_STATE_CCCD)
+    }
+    else if(centralConnList[connItem].discState == BLE_DISC_STATE_CCCD)
+    {
+        // Characteristic found, store handle
+        if(pMsg->method == ATT_READ_BY_TYPE_RSP &&
+        pMsg->msg.readByTypeRsp.numPairs > 0)
         {
-            // Characteristic found, store handle
-            if(pMsg->method == ATT_READ_BY_TYPE_RSP &&
-            pMsg->msg.readByTypeRsp.numPairs > 0)
-            {
-                centralConnList[connItem].cccHdl = BUILD_UINT16(pMsg->msg.readByTypeRsp.pDataList[0],
-                                            pMsg->msg.readByTypeRsp.pDataList[1]);
+            centralConnList[connItem].cccHdl = BUILD_UINT16(pMsg->msg.readByTypeRsp.pDataList[0],
+                                        pMsg->msg.readByTypeRsp.pDataList[1]);
 
-                centralConnList[connItem].procedureInProgress = FALSE;
+            centralConnList[connItem].procedureInProgress = FALSE;
 
-                // Start do write CCCD
-                tmos_start_task(centralConnList[connItem].taskID, START_WRITE_CCCD_EVT, DEFAULT_WRITE_CCCD_DELAY);
+            // Start do write CCCD
+            tmos_start_task(centralConnList[connItem].taskID, START_WRITE_CCCD_EVT, DEFAULT_WRITE_CCCD_DELAY);
 
-                // Display Characteristic 1 handle
-                PRINT("Found client characteristic configuration handle : %x \n", centralConnList[connItem].cccHdl);
-            }
-            centralConnList[connItem].discState = BLE_DISC_STATE_IDLE;
+            // Display Characteristic 1 handle
+            PRINT("Found client characteristic configuration handle : %x \n", centralConnList[connItem].cccHdl);
         }
-    }
-    else if(connItem == 1)
-    {
-    }
-    else if(connItem == 2)
-    {
+        centralConnList[connItem].discState = BLE_DISC_STATE_IDLE;
     }
 }
 
