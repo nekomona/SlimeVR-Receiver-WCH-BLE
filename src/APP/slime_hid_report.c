@@ -14,7 +14,7 @@ struct HidSensorReport {
 	uint16_t a[3]; // x, y, z
 };
 
-struct HidSensorReport reports[128+16];
+struct HidSensorReport reports[32+4];
 int report_count = 0;
 int report_sent = 0;
 
@@ -37,21 +37,20 @@ void send_report() {
         }
 
         report_sent += 3;
-        if (report_sent > 128) report_sent = 0;
+        if (report_sent > 32) report_sent = 0;
         report_count = 0;
     }
 }
 
 void push_report(uint8_t sensorid, uint8_t rssi, const void * reportdata) {
-    if (report_sent + report_count < 128) {
+    if (report_sent + report_count < 32) {
+        struct HidSensorReport * rpt = &reports[report_sent+report_count];
 
-        // reports[report_sent+report_count].__type = 0;
+        rpt->__type = 0;
 
-        // uint8_t * wptr = (uint8_t *) (&reports[report_sent+report_count]);
-
-        // memcpy(wptr+1, reportdata, sizeof(struct HidSensorReport)-1);
-        // reports[report_sent+report_count].sensorId = (sensorid << 4) | (reports[report_sent+report_count].sensorId * 0x0F);
-        // reports[report_sent+report_count].rssi = rssi;
+        tmos_memcpy(rpt+1, reportdata, sizeof(struct HidSensorReport)-1);
+        rpt->sensorId = (sensorid << 4) | (rpt->sensorId & 0x0F);
+        rpt->rssi = rssi;
 
         report_count++;
     } else {

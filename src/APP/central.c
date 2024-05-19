@@ -318,7 +318,7 @@ uint16_t Central_ProcessEvent(uint8_t task_id, uint16_t events)
     }
 
     if(events & SEND_HID_REPORT_EVT) {
-        // send_report();
+        send_report();
         return (events ^ SEND_HID_REPORT_EVT);
     }
 
