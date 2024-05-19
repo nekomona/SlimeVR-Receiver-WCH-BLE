@@ -15,6 +15,7 @@
 #include "CONFIG.h"
 #include "hal.h"
 #include "central.h"
+#include "usbd_core.h"
 
 /*********************************************************************
  * GLOBAL TYPEDEFS
@@ -64,9 +65,20 @@ int main(void)
     GPIOA_ModeCfg(bTXD1, GPIO_ModeOut_PP_5mA);
     UART1_DefInit();
 #endif
+    extern void cdc_acm_init(void);;
+    cdc_acm_init();
+    
+    // Wait until configured
+    while (!usb_device_is_configured()) {
+    }
+
+    DelayMs(2000);
+    
     PRINT("%s\n", VER_LIB);
     CH58X_BLEInit();
     HAL_Init();
+    
+
     GAPRole_CentralInit();
     Central_Init();
     Main_Circulation();

@@ -35,21 +35,31 @@
 #define USB_CTRL_EP_MPS 64
 
 /* USB PID Types */
+#undef USB_PID_OUT
 #define USB_PID_OUT   (0x01) /* Tokens */
+#undef USB_PID_IN
 #define USB_PID_IN    (0x09)
+#undef USB_PID_SOF
 #define USB_PID_SOF   (0x05)
+#undef USB_PID_SETUP
 #define USB_PID_SETUP (0x0d)
 
+#undef USB_PID_DATA0
 #define USB_PID_DATA0 (0x03) /* Data */
+#undef USB_PID_DATA1
 #define USB_PID_DATA1 (0x0b)
 #define USB_PID_DATA2 (0x07)
 #define USB_PID_MDATA (0x0f)
 
+#undef USB_PID_ACK
 #define USB_PID_ACK   (0x02) /* Handshake */
+#undef USB_PID_NAK
 #define USB_PID_NAK   (0x0a)
+#undef USB_PID_STALL
 #define USB_PID_STALL (0x0e)
 #define USB_PID_NYET  (0x06)
 
+#undef USB_PID_PRE
 #define USB_PID_PRE      (0x0c) /* Special */
 #define USB_PID_ERR      (0x0c)
 #define USB_PID_SPLIT    (0x08)
