@@ -53,6 +53,8 @@ typedef struct
     uint16_t svcEndHdl;           // Discovered service end handle
     uint16_t charHdl;             // Discovered characteristic handle
     uint16_t cccHdl;              // client characteristic configuration discovery handle
+    uint8_t  lastRssi;
+    uint8_t  deviceIndex;
 } centralConnItem_t;
 
 typedef struct

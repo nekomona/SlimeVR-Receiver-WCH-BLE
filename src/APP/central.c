@@ -64,7 +64,7 @@
 #define DEFAULT_RSSI_PERIOD                 3200
 
 // Minimum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MIN_CONN_INTERVAL    6
+#define DEFAULT_UPDATE_MIN_CONN_INTERVAL    8
 
 // Maximum connection interval (units of 1.25ms)
 #define DEFAULT_UPDATE_MAX_CONN_INTERVAL    16
@@ -168,7 +168,6 @@ static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
 
 // Connection item list
 static centralConnItem_t centralConnList[CENTRAL_MAX_CONNECTION];
-static uint8_t connRssiList[CENTRAL_MAX_CONNECTION];
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -272,6 +271,8 @@ static void centralInitConnItem(centralConnItem_t *centralConnList)
         centralConnList[connItem].svcStartHdl = 0;
         centralConnList[connItem].svcEndHdl = 0;
         centralConnList[connItem].cccHdl = 0;
+        centralConnList[connItem].lastRssi = 0;
+        centralConnList[connItem].deviceIndex = 255;
     }
 }
 
@@ -511,7 +512,7 @@ static void centralProcessGATTMsg(gattMsgEvent_t *pMsg)
     {
         int len = pMsg->msg.handleValueNoti.len;
         if (len == 19) {
-            push_report(connItem, connRssiList[connItem], pMsg->msg.handleValueNoti.pValue);
+            push_report(centralConnList[connItem].deviceIndex, centralConnList[connItem].lastRssi, pMsg->msg.handleValueNoti.pValue);
             tmos_set_event(centralTaskId, SEND_HID_REPORT_EVT);
         }
         /*
@@ -545,7 +546,7 @@ static void centralRssiCB(uint16_t connHandle, int8_t rssi)
     for(connItem = 0; connItem < CENTRAL_MAX_CONNECTION; connItem++)
     {
         if(centralConnList[connItem].connHandle == connHandle) {
-            connRssiList[connItem] = rssi;
+            centralConnList[connItem].lastRssi = rssi;
             PRINT("Dev %d RSSI : -%d dB\n", connItem, -rssi);
             break;
         }
@@ -676,6 +677,18 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                     centralConnList[connItem].state = BLE_STATE_CONNECTED;
                     centralConnList[connItem].connHandle = pEvent->linkCmpl.connectionHandle;
                     centralConnList[connItem].procedureInProgress = TRUE;
+
+                    for (int i = 0; i < CENTRAL_MAX_CONNECTION; i++) {
+                        if(tmos_memcmp(PeerAddrDef[i].peerAddr, pEvent->linkCmpl.devAddr, B_ADDR_LEN) == TRUE) {
+                            centralConnList[connItem].deviceIndex = i;
+                            break;
+                        }
+                    }
+
+                    PRINT("cn %d %d - %02x:%02x:%02x:%02x:%02x:%02x\n", connItem, centralConnList[connItem].deviceIndex,
+                            pEvent->linkCmpl.devAddr[0], pEvent->linkCmpl.devAddr[1], pEvent->linkCmpl.devAddr[2],
+                            pEvent->linkCmpl.devAddr[3], pEvent->linkCmpl.devAddr[4], pEvent->linkCmpl.devAddr[5]
+                        );
 
                     PRINT("Conn %x - Int %x \n", pEvent->linkCmpl.connectionHandle, pEvent->linkCmpl.connInterval);
                     
