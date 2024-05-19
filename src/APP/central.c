@@ -598,16 +598,26 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
         case GAP_DEVICE_DISCOVERY_EVENT:
         {
             uint8_t i;
+            uint8_t found = 0;
 
             // See if peer device has been discovered
             for(i = 0; i < centralScanRes; i++)
             {
-                if(centralAddrCmp(PeerAddrDef, centralDevList[i].addr))
-                    break;
+                if(centralAddrCmp(PeerAddrDef, centralDevList[i].addr)) {
+                    PRINT("Device %d found...\n", i);
+                    GAPRole_CentralEstablishLink(DEFAULT_LINK_HIGH_DUTY_CYCLE,
+                                                DEFAULT_LINK_WHITE_LIST,
+                                                centralDevList[i].addrType,
+                                                centralDevList[i].addr);
+
+                    // Start establish link timeout event
+                    tmos_start_task(centralTaskId, ESTABLISH_LINK_TIMEOUT_EVT, ESTABLISH_LINK_TIMEOUT);
+                    found = 1;
+                }
             }
 
             // Peer device not found
-            if(i == centralScanRes)
+            if(found == 0)
             {
                 PRINT("Device not found...\n");
                 centralScanRes = 0;
@@ -615,20 +625,6 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                                               DEFAULT_DISCOVERY_ACTIVE_SCAN,
                                               DEFAULT_DISCOVERY_WHITE_LIST);
                 PRINT("Discovering...\n");
-            }
-
-            // Peer device found
-            else
-            {
-                PRINT("Device found...\n");
-                GAPRole_CentralEstablishLink(DEFAULT_LINK_HIGH_DUTY_CYCLE,
-                                             DEFAULT_LINK_WHITE_LIST,
-                                             centralDevList[i].addrType,
-                                             centralDevList[i].addr);
-
-                // Start establish link timeout event
-                tmos_start_task(centralTaskId, ESTABLISH_LINK_TIMEOUT_EVT, ESTABLISH_LINK_TIMEOUT);
-                PRINT("Connecting...\n");
             }
         }
         break;
