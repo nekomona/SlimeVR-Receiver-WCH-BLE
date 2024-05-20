@@ -156,14 +156,8 @@ static gapDevRec_t centralDevList[DEFAULT_MAX_SCAN_RES];
 
 // Peer device address
 static peerAddrDefItem_t PeerAddrDef[CENTRAL_MAX_CONNECTION] = {
-    {{0x83, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x8F, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
     {{0x64, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x73, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
     {{0x4F, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x15, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x16, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
-    {{0x17, 0x38, 0x10, 0xA7, 0x14, 0xD4}},
 };
 
 // Connection item list
@@ -712,7 +706,7 @@ static void centralEventCB(gapRoleEvent_t *pEvent)
                         if(centralConnList[connItem].connHandle == GAP_CONNHANDLE_INIT)
                             break;
                     }
-                    if(connItem < 5)
+                    if(connItem < CENTRAL_MAX_CONNECTION)
                     {
                         PRINT("Discovering...\n");
                         centralScanRes = 0;

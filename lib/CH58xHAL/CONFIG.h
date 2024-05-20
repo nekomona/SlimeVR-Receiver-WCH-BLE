@@ -75,7 +75,7 @@
 #define CLK_OSC32K 0
 #define TEM_SAMPLE FALSE
 #define PERIPHERAL_MAX_CONNECTION 0
-#define CENTRAL_MAX_CONNECTION 8
+#define CENTRAL_MAX_CONNECTION 2
 #define BLE_MEMHEAP_SIZE                    (1024*12)
 // #define SLEEP_RTC_MIN_TIME US_TO_RTC(1500)
 /*********************************************************************
