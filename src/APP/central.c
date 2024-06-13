@@ -67,7 +67,7 @@
 #define DEFAULT_UPDATE_MIN_CONN_INTERVAL    8
 
 // Maximum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    16
+#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    10
 
 // Slave latency to use parameter update
 #define DEFAULT_UPDATE_SLAVE_LATENCY        0
