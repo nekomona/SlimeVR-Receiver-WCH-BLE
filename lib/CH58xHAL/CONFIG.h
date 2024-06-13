@@ -77,6 +77,8 @@
 #define PERIPHERAL_MAX_CONNECTION 0
 #define CENTRAL_MAX_CONNECTION 2
 #define BLE_MEMHEAP_SIZE                    (1024*12)
+#define BLE_BUFF_MAX_LEN 251
+#define BLE_TX_POWER LL_TX_POWEER_6_DBM
 // #define SLEEP_RTC_MIN_TIME US_TO_RTC(1500)
 /*********************************************************************
  * Ĭ������ֵ
