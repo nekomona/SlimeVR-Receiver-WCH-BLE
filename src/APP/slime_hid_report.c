@@ -28,7 +28,7 @@ void send_report() {
     if (!hid_is_busy()) {
         // Pad report to 3x20B if <3 reports to send
         for (int i = report_count; i < 3; i++) {
-            reports[i] = reports[0];
+            reports[i] = reports[report_count-1];
         }
 
         hid_start_write(reports, 3 * sizeof(struct HidSensorReport));
