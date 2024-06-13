@@ -37,10 +37,10 @@
 #define DEFAULT_SCAN_DURATION               6400
 
 // Connection min interval in 1.25ms
-#define DEFAULT_MIN_CONNECTION_INTERVAL     8
+#define DEFAULT_MIN_CONNECTION_INTERVAL     6
 
 // Connection max interval in 1.25ms
-#define DEFAULT_MAX_CONNECTION_INTERVAL     10
+#define DEFAULT_MAX_CONNECTION_INTERVAL     6
 
 // Connection supervision timeout in 10ms
 #define DEFAULT_CONNECTION_TIMEOUT          600
@@ -64,10 +64,10 @@
 #define DEFAULT_RSSI_PERIOD                 3200
 
 // Minimum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MIN_CONN_INTERVAL    8
+#define DEFAULT_UPDATE_MIN_CONN_INTERVAL    6
 
 // Maximum connection interval (units of 1.25ms)
-#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    10
+#define DEFAULT_UPDATE_MAX_CONN_INTERVAL    6
 
 // Slave latency to use parameter update
 #define DEFAULT_UPDATE_SLAVE_LATENCY        0
